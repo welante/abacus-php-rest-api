@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * @package Abacus PHP REST API
+ * @author Thomas Hirter <memurame@tekomail.ch>
+ */
+
+$abacus_client_config = [
+    'base_url'      => 'https://abacus.domain.ch',
+    'client_id'     => 'a001ac4a-c4c260e57b66',
+    'client_secret' => 'b2f83401-3fd2c9f65d7f',
+    'mandant'       => '7777'
+];
