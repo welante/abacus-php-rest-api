@@ -5,7 +5,6 @@
     "homepage": "https://github.com/Memurame/abacus-php-rest-api",
     "keywords": ["abacus", "api"],
     "license": "MIT",
-    "version": "0.1",
     "authors": [
         {
             "name": "Thomas Hirter",
