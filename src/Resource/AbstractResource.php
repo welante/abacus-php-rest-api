@@ -19,6 +19,18 @@ abstract class AbstractResource{
 
     private $error;
 
+    private $url;
+
+    private $filter;
+
+    private $limit;
+
+    private $order;
+
+    private $select;
+
+    private $resource;
+
     public function __construct( \AbacusAPIClient\AbacusClient $client )
     {
         $this->client = $client;
@@ -65,16 +77,29 @@ abstract class AbstractResource{
         return $this->getValue('Id');
     }
 
-    /**
-     * Fetches object data for all objects of this type.
-     *
-     * @return $this
-     */
-    public function all(){
+    public function run(){
 
-        $url = $this->getURL('all');
+        $query = [];
+        if(!empty($this->filter)){
+            $query['$filter'] = $this->filter;
+        }
+        if(!empty($this->limit)){
+            $query['$top'] = $this->limit;
+        }
+        if(!empty($this->order)){
+            $query['$orderBy'] = $this->limit;
+        }
+        if(!empty($this->expand)){
+            $query['$expand'] = $this->expand;
+        }
+        if(!empty($this->select)){
+            $query['$select'] = $this->select;
+        }
 
-        $response = $this->client->getRequest($url);
+        if(empty($this->url)){
+            $this->url = $this->getURL('all');
+        }
+        $response = $this->client->getRequest($this->url, $query);
 
         if ( $response->hasError() ) {
             $this->setError( $response->getError() );
@@ -87,37 +112,40 @@ abstract class AbstractResource{
         return $this;
     }
 
-    public function search(string $key, string $operator, string $search){
+    public function filter(string $key, string $operator, string $search){
 
-        $search_string = implode(" ", [$key, $operator, $search]);
-
-        $url = $this->getURL('search');
-
-        $response = $this->client->getRequest($url, ['$filter' => $search_string]);
-
-        if ( $response->hasError() ) {
-            $this->setError( $response->getError() );
-        }
-        else {
-            $this->clearError();
-            $this->setRemoteData( $response->getData() );
-        }
+        $this->filter = implode(" ", [$key, $operator, $search]);
 
         return $this;
     }
 
-    public function get(string $id, bool $loadSubject = false){
-        $url = $this->getURL('get', ['Id' => $id]);
+    public function limit(int $limit){
+        $this->limit = $limit;
 
-        $response = $this->client->getRequest($url);
+        return $this;
+    }
 
-        if ( $response->hasError() ) {
-            $this->setError( $response->getError() );
-        }
-        else {
-            $this->clearError();
-            $this->setRemoteData( $response->getData() );
-        }
+    public function select(string $key){
+        $this->select = $key;
+
+        return $this;
+    }
+
+    public function order(string $key, string $direction){
+        $this->order = implode(" ", [$key, $direction]);
+
+        return $this;
+    }
+
+    public function expand(string $resource){
+        $this->expand = $resource;
+
+        return $this;
+    }
+
+    public function id(string $id){
+
+        $this->url = $this->getURL('get', ['Id' => $id]);
 
         return $this;
     }
