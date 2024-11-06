@@ -10,6 +10,7 @@ namespace AbacusAPIClient;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use AbacusAPIClient\Client\Response;
 
 class AbacusClient
 {
@@ -66,27 +67,58 @@ class AbacusClient
             throw new \Exception('Failed to authenticate with Abacus API: ' . $e->getMessage());
         }
     }
-
-    public function hasToken(){
-        return ($this->token) ? true : false;
-    }
-
-    public function getRequest($path, $params = [])
+    private function request(string $method, string $path, array $params = [], array $values = [])
     {
         $url = '/api/entity/v1/mandants/' . $this->credentials['mandant'] . '/' . $path;
 
-        try {
-            $response = $this->client->get($url, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->token,
-                ],
-                'query' => $params,
-            ]);
+        $request = [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->token,
+                'Content-Type' => 'application/json',
+            ],
+            'query' => $params,
+            'body' => json_encode($values),
+        ];
 
-            return json_decode($response->getBody(), true);
+        if($method == 'PATCH'){
+            //dd($request);
+        }
+
+
+        try {
+            $response = $this->client->request($method, $url, $request);
+
+            $response = new Response(
+                $response->getStatusCode(),
+                '',
+                $response->getBody(),
+                $response->getHeaders()
+            );
+
+            return $response;
         } catch (RequestException $e) {
             throw new \Exception("Failed to retrieve data from Abacus API: " . $e->getMessage());
         }
+    }
+
+    public function getRequest(string $path, array $params = []){
+        return $this->request('GET', $path, $params);
+    }
+
+    public function postRequest(string $path, array $values = []){
+        return $this->request('POST', $path, [], $values);
+    }
+
+    public function patchRequest(string $path, array $values = []){
+        return $this->request('PATCH', $path, [], $values);
+    }
+
+    public function deleteRequest(string $path, array $params = []){
+        return $this->request('DELETE', $path, $params);
+    }
+
+    public function hasToken(){
+        return ($this->token) ? true : false;
     }
 
     public function resource($resource_type)
