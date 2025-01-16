@@ -54,12 +54,13 @@ You can attach any of these functions to a request.
 As an example, I have listed all possible queries for you
 ```php
 use AbacusAPIClient\ResourceType;
-$addresses = $abacusClient->resource(ResourceType::ADDRESSES)
+$addresses = $abacusClient->resource(ResourceType::SUBJECTS)
     ->filter('SubjectId', 'eq', 8)
     ->limit(3)
     ->order('Id', 'desc')
     ->select('FirstName')
-    ->expand('Subject')
+    ->expand('Addresses', 'Communications')
+    ->all()
     ->run();
 ```
 #### filter
@@ -68,6 +69,7 @@ https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html#se
 
 #### limit
 You can specify how many results you want.
+Does not work together with all()
 https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html#sec_SystemQueryOptiontop
 
 #### order
@@ -80,6 +82,13 @@ https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html#se
 #### expand
 You can attach related entities here.
 https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html#sec_SystemQueryOptionexpand
+
+#### all
+Abacus does not output all data records, it works with [@odata.nextLink]. As long as @odata.nextLink exists, it has data records that can still be retrieved. 
+A request is made with the all() function until all data records have been retrieved.
+
+
+
 
 ### Get all Values of the object
 To get all available Values of the Address:
@@ -138,21 +147,21 @@ to your code. You then can reference the resource type like
 $abacusClient->resource( ResourceType::ADDRESSES );
 ```
 
-| Resource type               | Category | Implemented & tested |
-|:----------------------------|:---------|:--------------------:|
-| ACCOUNTDOCUMENTS            | Finance  |       &#10004;       |
-| ACCOUNTS                    | Finance  |       &#10004;       |
-| ADDRESSES                   | CRM      |       &#10004;       |
-| COMMUNICATIONS              | CRM      |       &#10004;       |
-| COSTCENTREDOCUMENTS         | Finance  |       &#10004;       |
-| COSTCENTRES                 | Finance  |       &#10004;       |
-| GENERALLEDGERENTRIES        | Finance  |       &#10004;       |
-| GENERALLEDGERENTRYDOCUMENTS | Finance  |       &#10004;       |
-| JOURNALS                    | Finance  |       &#10004;       |
-| LINKDOCUMENTS               | CRM      |       &#10004;       |
-| LINKTYPES                   | CRM      |       &#10004;       |
-| LINKS                       | CRM      |       &#10004;       |
-| SUBJECTDOCUMENTS            | CRM      |       &#10004;       |
-| SUBJECTGROUPINGENTRIES      | CRM      |       &#10004;       |
-| SUBJECTGROUPINGS            | CRM      |       &#10004;       |
-| SUBJECTS                    | CRM      |       &#10004;       |
+| Resource type               | Category | Expand                                                                                                                                                                                                                      | Implemented & tested |
+|:----------------------------|:---------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------:|
+| ACCOUNTDOCUMENTS            | Finance  | Account, Storage                                                                                                                                                                                                            |            &#10004;  |
+| ACCOUNTS                    | Finance  | Currency, Enterprise, ReferenceAccount, Documents                                                                                                                                                                           | &#10004;              |
+| ADDRESSES                   | CRM      | Subject                                                                                                                                                                                                                     | &#10004;              |
+| COMMUNICATIONS              | CRM      | Link, Subject                                                                                                                                                                                                               | &#10004;              |
+| COSTCENTREDOCUMENTS         | Finance  | CostCentre, Storage                                                                                                                                                                                                         | &#10004;              |
+| COSTCENTRES                 | Finance  | Enterprise, Documents                                                                                                                                                                                                       | &#10004;              |
+| GENERALLEDGERENTRIES        | Finance  | CrossDivisionHeader, FollowUpHeader,CollectiveHeader, Division, Journal, AccrualHeader, CrossDivisionPositions, FollowUpPositions, CollectivePositions, AccrualPositions, Documents                                         | &#10004;              |
+| GENERALLEDGERENTRYDOCUMENTS | Finance  | GeneralLedgerEntry, Storage                                                                                                                                                                                                 | &#10004;              |
+| JOURNALS                    | Finance  | Enterprise, GeneralLedgerEntries                                                                                                                                                                                            | &#10004;              |
+| LINKDOCUMENTS               | CRM      | Link, Storage                                                                                                                                                                                                               | &#10004;              |
+| LINKTYPES                   | CRM      | Links                                                                                                                                                                                                                       | &#10004;              |
+| LINKS                       | CRM      | TargetSubject, LinkType, SourceSubject, Communications, Documents, SubjectGroupingEntries                                                                                                                                   | &#10004;              |
+| SUBJECTDOCUMENTS            | CRM      | Subject, Storage                                                                                                                                                                                                            | &#10004;              |
+| SUBJECTGROUPINGENTRIES      | CRM      | ContactPersonReference, SubjectReference, ContainingSubjectGrouping                                                                                                                                                         | &#10004;              |
+| SUBJECTGROUPINGS            | CRM      | Entries                                                                                                                                                                                                                     | &#10004;              |
+| SUBJECTS                    | CRM      | Projects, BeneficiaryAccounts, Divisions, Enterprises, Customers, CustomerInvoicesForReminder, CustomerInvoicesForSubject, Employee, Addresses, Communications, TargetLinks, SourceLinks, Documents, SubjectGroupingEntries | &#10004;              |
