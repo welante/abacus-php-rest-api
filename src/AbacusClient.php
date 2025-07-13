@@ -24,6 +24,7 @@ class AbacusClient
     private GenericProvider $tokenProvider;
     private FilesystemAdapter $cache;
     private array $credentials;
+    private string $cachekey;
 
     public function __construct(array $credentials)
     {
@@ -52,11 +53,13 @@ class AbacusClient
                 'User-Agent'   => 'abacus-rest-api/1.0',
             ],
         ]);
+
+        $this->cachekey = 'abacus_token_' . parse_url($this->credentials['base_url'], PHP_URL_HOST) . '_' . $this->credentials['client_id'];
     }
 
     private function getAccessToken(): string
     {
-        return $this->cache->get('abacus_token', function ($item) {
+        return $this->cache->get($this->cachekey, function ($item) {
             $token = $this->tokenProvider->getAccessToken('client_credentials');
 
             // 30 seconds grace period
