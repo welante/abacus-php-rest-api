@@ -8,15 +8,16 @@
 
 namespace AbacusAPIClient;
 
+use AbacusAPIClient\Client\Response;
 use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\GuzzleException;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use GuzzleHttp\Psr7\MultipartStream;
 use Psr\Http\Message\RequestInterface;
 use League\OAuth2\Client\Provider\GenericProvider;
-use AbacusAPIClient\Client\Response;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class AbacusClient
 {
@@ -75,6 +76,89 @@ class AbacusClient
             return $request
                 ->withHeader('Authorization', 'Bearer ' . $accessToken);
         });
+    }
+
+    public function batch(array $requests)
+    {
+        $multipart = [];
+        foreach ($requests as $i => $request) {
+            $contentPart =
+                $request['method'] . ' ' . $request['url'] . " HTTP/1.1\r\n" .
+                "Content-Type: application/json;odata.metadata=minimal\r\n\r\n" .
+                ($request['data'] ? json_encode($request['data']) : '');
+
+            $multipart[] = [
+                'name' => 'part' . ($i + 1),
+                'contents' => $contentPart,
+                'headers'  => [
+                    'Content-Type' => 'application/http',
+                    'Content-Transfer-Encoding' => 'binary',
+                ],
+            ];
+        }
+
+        $url = '/api/entity/v1/mandants/' . $this->credentials['mandant'] . '/$batch';
+
+        $multipartStream = new MultipartStream($multipart);
+
+        try {
+            $response = $this->client->post($url, [
+                'headers' => [
+                    'Content-Type' => 'multipart/mixed; boundary=' . $multipartStream->getBoundary(),
+                    'Accept'       => 'application/json',
+                ],
+                'body' => $multipartStream,
+            ]);
+
+            $body = $response->getBody()->getContents();
+            $contentType = $response->getHeader('Content-Type')[0];
+
+            // Boundary aus Content-Type extrahieren
+            preg_match('/boundary=(.+)$/', $contentType, $matches);
+            $boundary = trim($matches[1], '"');
+
+            // Parts aufteilen
+            $parts = explode("--$boundary", $body);
+
+            foreach ($parts as $part) {
+                if (trim($part) === '' || trim($part) === '--') {
+                    continue;
+                }
+
+                // Headers und Body trennen
+                $sections = explode("\r\n\r\n", $part, 2);
+                if (count($sections) < 2) continue;
+
+                $headers = $sections[0];
+                $body = $sections[1];
+
+                // Header parsen
+                $headerLines = explode("\r\n", $headers);
+                $parsedHeaders = [];
+                foreach ($headerLines as $line) {
+                    if (strpos($line, ':') !== false) {
+                        [$key, $value] = explode(':', $line, 2);
+                        $parsedHeaders[trim($key)] = trim($value);
+                    }
+                }
+
+                // Mit dem Part arbeiten
+                echo "Content-Type: " . ($parsedHeaders['Content-Type'] ?? 'unknown') . "\n";
+                echo "Body length: " . strlen($body) . "\n\n";
+                echo "Body:\n";
+                echo $body . "\n\n";
+                // Schritt 1: Body vom Header trennen
+                // HTTP-Header und Body sind durch zwei Zeilenumbrüche getrennt
+                $parts = preg_split("/\R\R/", $body, 2);
+                $body = $parts[1] ?? '';
+
+                // Schritt 2: JSON dekodieren
+                $data = json_decode($body, true);
+                print_r($data);
+            }
+        } catch (BadResponseException | GuzzleException $e) {
+            throw new \Exception("Failed to retrieve data from Abacus API: " . $e->getResponse()->getBody());
+        }
     }
 
     private function request(string $method, string $path, array $params = [], array $values = [])
