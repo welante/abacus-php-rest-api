@@ -13,7 +13,7 @@ It will therefore not yet have many functions.**
 
 ## Install
 ```
-composer require memurame/abacus-php-rest-api
+composer require welante/abacus-php-rest-api
 ```
 
 ## How to use the API client
@@ -22,17 +22,18 @@ You can find example code within the directory examples.
 
 ### The Client object
 Your starting point is the AbacusClient object:
-```
+```php
 use AbacusAPIClient\AbacusClient;
 
 $abacusClient = new AbacusClient([
     'base_url'      => 'https://abacus.domain.ch',
     'client_id'     => '',
     'client_secret' => '',
-    'mandant'       => '7777'
+    'mandant'       => 7777,
 ]);
 
 ```
+it uses league/oauth2-client to get the access token and uses Guzzle middleware to refresh it in case it expires.
 
 ### Fetching all Resource object
 To read all objects without filtering:
@@ -75,6 +76,7 @@ https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html#se
 #### order
 Define which key to sort by and in which direction.
 https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html#sec_SystemQueryOptionorderby
+
 #### select
 Define which values you want back. The ID is always included.
 https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html#sec_SystemQueryOptionselect
@@ -86,9 +88,6 @@ https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html#se
 #### all
 Abacus does not output all data records, it works with [@odata.nextLink]. As long as @odata.nextLink exists, it has data records that can still be retrieved. 
 A request is made with the all() function until all data records have been retrieved.
-
-
-
 
 ### Get all Values of the object
 To get all available Values of the Address:

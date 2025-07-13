@@ -2,80 +2,83 @@
 
 /**
  * @package Abacus PHP REST API
+ * @author welante GmbH <info@welante.ch>
  * @author Thomas Hirter <memurame@tekomail.ch>
  */
 
 namespace AbacusAPIClient;
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Exception\BadResponseException;
+use GuzzleHttp\Exception\GuzzleException;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Psr\Http\Message\RequestInterface;
+use League\OAuth2\Client\Provider\GenericProvider;
 use AbacusAPIClient\Client\Response;
 
 class AbacusClient
 {
-    private $client;
-    private $token;
-    private $cache;
-    private $credentials;
+    private Client $client;
+    private GenericProvider $tokenProvider;
+    private FilesystemAdapter $cache;
+    private array $credentials;
 
     public function __construct(array $credentials)
     {
         $this->credentials = $credentials;
-        
-        $this->client = new Client([
-            'base_uri' => $this->credentials['base_url'],
-        ]);
-
         $this->cache = new FilesystemAdapter();
 
-        $this->authenticate();
+        $this->tokenProvider = new GenericProvider([
+            'clientId'                => $this->credentials['client_id'],
+            'clientSecret'            => $this->credentials['client_secret'],
+            'urlAccessToken'          => $this->credentials['base_url'] . '/oauth/oauth2/v1/token',
+            'urlAuthorize'            => '',
+            'urlResourceOwnerDetails' => '',
+        ]);
+
+        $stack = HandlerStack::create();
+        $stack->push($this->getTokenRefreshMiddleware());
+
+        $this->client = new Client([
+            'base_uri' => $this->credentials['base_url'],
+            'handler' => $stack,
+            // 30 seconds
+            'timeout' => 30.0,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json',
+                'User-Agent'   => 'abacus-rest-api/1.0',
+            ],
+        ]);
     }
 
-    private function authenticate()
+    private function getAccessToken(): string
     {
-        $cacheItem = $this->cache->getItem('abacus_token');
+        return $this->cache->get('abacus_token', function ($item) {
+            $token = $this->tokenProvider->getAccessToken('client_credentials');
 
-        if ($cacheItem->isHit()) {
-            $this->token = $cacheItem->get();
-            return;
-        }
-
-        try {
-            $response = $this->client->post('/oauth/oauth2/v1/token', [
-                'headers' => [
-                    'Authorization' => 'Basic ' . base64_encode($this->credentials['client_id'] . ':' . $this->credentials['client_secret']),
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                ],
-                'form_params' => [
-                    'grant_type' => 'client_credentials',
-                ],
-            ]);
-
-            $data = json_decode($response->getBody(), true);
-
-            if (isset($data['access_token'])) {
-                $this->token = $data['access_token'];
-                
-                $cacheItem->set($this->token);
-                $cacheItem->expiresAfter(600);
-                $this->cache->save($cacheItem);
-            } else {
-                throw new \Exception('No access token in response');
-            }
-        } catch (RequestException $e) {
-            throw new \Exception('Failed to authenticate with Abacus API: ' . $e->getMessage());
-        }
+            // 30 seconds grace period
+            $item->expiresAfter($token->getExpires() - time() - 30);
+            return $token->getToken();
+        });
     }
+
+    private function getTokenRefreshMiddleware()
+    {
+        return Middleware::mapRequest(function (RequestInterface $request) {
+            $accessToken = $this->getAccessToken();
+            return $request
+                ->withHeader('Authorization', 'Bearer ' . $accessToken);
+        });
+    }
+
     private function request(string $method, string $path, array $params = [], array $values = [])
     {
         $url = '/api/entity/v1/mandants/' . $this->credentials['mandant'] . '/' . $path;
 
         $request = [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->token,
-                'Content-Type' => 'application/json',
-            ],
             'query' => $params,
             'body' => json_encode($values),
         ];
@@ -91,10 +94,9 @@ class AbacusClient
             );
 
             return $response;
-        } catch (RequestException $e) {
-            throw new \Exception("Failed to retrieve data from Abacus API: " . $e->getMessage());
+        } catch (BadResponseException | GuzzleException $e) {
+            throw new \Exception("Failed to retrieve data from Abacus API: " . $e->getResponse()->getBody());
         }
-
     }
 
     public function getRequest(string $path, array $params = []){
@@ -114,7 +116,7 @@ class AbacusClient
     }
 
     public function hasToken(){
-        return ($this->token) ? true : false;
+        return $this->getAccessToken();
     }
 
     public function resource($resource_type)

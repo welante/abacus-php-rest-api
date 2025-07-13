@@ -1,26 +1,33 @@
 {
-    "name": "memurame/abacus-php-rest-api",
+    "name": "welante/abacus-php-rest-api",
     "type": "library",
     "description": "Abacus REST API Client",
-    "homepage": "https://github.com/Memurame/abacus-php-rest-api",
+    "homepage": "https://github.com/welante/abacus-php-rest-api",
     "keywords": ["abacus", "api"],
     "license": "MIT",
     "authors": [
         {
             "name": "Thomas Hirter",
             "email": "memurame@tekomail.ch"
+        },
+        {
+            "name": "welante GmbH",
+            "email": "info@welante.ch"
         }
     ],
     "autoload": {
         "psr-4": {"AbacusAPIClient\\": "src/"}
     },
     "minimum-stability": "stable",
+    "config": {
+        "sort-packages": true
+    },
     "require-dev": {
-        "phpunit/phpunit": "^11.4"
+        "phpunit/phpunit": "^9.6"
     },
     "require": {
-        "guzzlehttp/guzzle": "^7.9",
-        "symfony/cache": "^7.1",
+        "league/oauth2-client": "2.4.*",
+        "symfony/cache": "^5.4",
         "vlucas/phpdotenv": "^5.6"
     }
 }
