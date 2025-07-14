@@ -113,26 +113,29 @@ class AbacusClient
             $body = $response->getBody()->getContents();
             $contentType = $response->getHeader('Content-Type')[0];
 
-            // Boundary aus Content-Type extrahieren
+            // get boundry from Content-Type
             preg_match('/boundary=(.+)$/', $contentType, $matches);
             $boundary = trim($matches[1], '"');
 
-            // Parts aufteilen
-            $parts = explode("--$boundary", $body);
-
+            // explode parts
+            $parts = explode('--' . $boundary, $body);
+            $objects = [];
             foreach ($parts as $part) {
-                if (trim($part) === '' || trim($part) === '--') {
+                $part = trim($part);
+                if (!$part || $part == '--') {
                     continue;
                 }
 
-                // Headers und Body trennen
+                // separate headers and body
                 $sections = explode("\r\n\r\n", $part, 2);
-                if (count($sections) < 2) continue;
+                if (count($sections) < 2) {
+                    continue;
+                }
 
                 $headers = $sections[0];
                 $body = $sections[1];
 
-                // Header parsen
+                // parse header
                 $headerLines = explode("\r\n", $headers);
                 $parsedHeaders = [];
                 foreach ($headerLines as $line) {
@@ -142,20 +145,16 @@ class AbacusClient
                     }
                 }
 
-                // Mit dem Part arbeiten
-                echo "Content-Type: " . ($parsedHeaders['Content-Type'] ?? 'unknown') . "\n";
-                echo "Body length: " . strlen($body) . "\n\n";
-                echo "Body:\n";
-                echo $body . "\n\n";
-                // Schritt 1: Body vom Header trennen
-                // HTTP-Header und Body sind durch zwei Zeilenumbrüche getrennt
                 $parts = preg_split("/\R\R/", $body, 2);
                 $body = $parts[1] ?? '';
 
-                // Schritt 2: JSON dekodieren
-                $data = json_decode($body, true);
-                print_r($data);
+                $objects[] = [
+                    'headers' => $parsedHeaders,
+                    'body'    => json_decode($body, true),
+                ];
             }
+
+            return $objects;
         } catch (BadResponseException | GuzzleException $e) {
             throw new \Exception("Failed to retrieve data from Abacus API: " . $e->getResponse()->getBody());
         }
